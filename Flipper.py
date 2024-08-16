@@ -104,7 +104,7 @@ class HypixelAuctionApp(QWidget):
         layout.addLayout(self.filter_layout)
 
         self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(self.create_table_widget(), "All")
+        self.tab_widget.addTab(self.create_table_widget(), "Bin Auctions")
         layout.addWidget(self.tab_widget)
 
         self.setLayout(layout)
@@ -186,7 +186,10 @@ class HypixelAuctionApp(QWidget):
             for auction in self.auctions:
                 auctions_by_uuid[auction['uuid']] = auction
             self.auctions_by_uuid = auctions_by_uuid
-            filtered_auctions = self.auctions
+            filtered_auctions = [
+                auction for auction in self.auctions
+                if item_filter in auction["item_name"].lower()
+            ]
             all_item_names = []
             profits_list = []
             lowest_list = []
@@ -203,9 +206,10 @@ class HypixelAuctionApp(QWidget):
                     second_list.append(second)
             self.tab_widget.widget(0).setRowCount(len(profits_list))
             for i in range(0, len(profits_list)):
-                auction_id_item = QTableWidgetItem(profits_list[i][1])
-                auction_id_item.setToolTip(f'Click to copy /viewauction {profits_list[i][1]}')
-                auction_id_item.setData(Qt.UserRole, profits_list[i][1])
+                auction_id = profits_list[i][1]
+                auction_id_item = QTableWidgetItem(auction_id)
+                auction_id_item.setToolTip(f'Click to copy /viewauction {auction_id}')
+                auction_id_item.setData(Qt.UserRole, auction_id)
                 auction_id_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
 
                 font = QFont()
@@ -224,6 +228,7 @@ class HypixelAuctionApp(QWidget):
                 self.tab_widget.widget(0).setItem(i, 2, self.create_timer_item(profits_list[i][2]))
                 self.tab_widget.widget(0).setItem(i, 3, QTableWidgetItem(f'{price_gap:,}' if price_gap is not None else 'N/A'))
 
+            self.tab_widget.widget(0).cellClicked.connect(self.copy_auction_id_to_clipboard)
             self.timer.start(1000)
         else:
             for i in range(4):
@@ -243,7 +248,6 @@ class HypixelAuctionApp(QWidget):
         for key in bins:
             bins[key].sort(key=lambda x: x["starting_bid"])
         return bins
-
 
     def calculate_price_gap(self, item_name, bins):
         bins_for_item = bins[item_name.lower()]
@@ -346,7 +350,6 @@ class HypixelAuctionApp(QWidget):
         return timer_item
 
     def update_countdowns(self):
-        current_time = time.time()
         current_tab = self.tab_widget.currentIndex()
         table = self.tab_widget.widget(current_tab)
 
